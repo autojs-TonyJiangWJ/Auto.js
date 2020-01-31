@@ -17,13 +17,13 @@ configurations.all {
 android {
     signingConfigs {
         release {
-            storeFile file(homePath + '/auto-js-t-pkcs12.jks')
+            //storeFile file(homePath + '/auto-js-t-pkcs12.jks')
             storePassword 'fixture'
             keyPassword 'fixture'
             keyAlias = 'autojs-t'
         }
         debug {
-            storeFile file(homePath + '/auto-js-t-pkcs12.jks')
+            //storeFile file(homePath + '/auto-js-t-pkcs12.jks')
             storePassword 'fixture'
             keyPassword 'fixture'
             keyAlias = 'autojs-t'
