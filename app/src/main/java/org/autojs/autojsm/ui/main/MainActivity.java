@@ -1,6 +1,8 @@
 package org.autojs.autojsm.ui.main;
 
+
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -16,6 +18,8 @@ import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.widget.Toolbar;
 import androidx.viewpager.widget.ViewPager;
 
+import android.provider.Settings;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -31,7 +35,6 @@ import com.stardust.enhancedfloaty.FloatyService;
 import com.stardust.pio.PFiles;
 import com.stardust.theme.ThemeColorManager;
 import com.stardust.util.BackPressedHandler;
-import com.stardust.util.DeveloperUtils;
 import com.stardust.util.DrawerAutoClose;
 
 import org.androidannotations.annotations.AfterViews;
@@ -44,6 +47,7 @@ import org.autojs.autojsm.R;
 import org.autojs.autojsm.autojs.AutoJs;
 import org.autojs.autojsm.external.foreground.ForegroundService;
 import org.autojs.autojsm.model.explorer.Explorers;
+import org.autojs.autojsm.timing.TimedTaskScheduler;
 import org.autojs.autojsm.tool.AccessibilityServiceTool;
 import org.autojs.autojsm.ui.BaseActivity;
 import org.autojs.autojsm.ui.common.NotAskAgainDialog;
@@ -73,6 +77,7 @@ public class MainActivity extends BaseActivity implements OnActivityResultDelega
 
     private static final String LOG_TAG = "MainActivity";
 
+
     @ViewById(R.id.drawer_layout)
     DrawerLayout mDrawerLayout;
 
@@ -101,6 +106,7 @@ public class MainActivity extends BaseActivity implements OnActivityResultDelega
         showAnnunciationIfNeeded();
         EventBus.getDefault().register(this);
         applyDayNightMode();
+
     }
 
     @AfterViews
@@ -146,14 +152,28 @@ public class MainActivity extends BaseActivity implements OnActivityResultDelega
         if (AccessibilityServiceTool.isAccessibilityServiceEnabled(this)) {
             return;
         }
-        new NotAskAgainDialog.Builder(this, "MainActivity.accessibility")
-                .title(R.string.text_need_to_enable_accessibility_service)
-                .content(R.string.explain_accessibility_permission)
-                .positiveText(R.string.text_go_to_setting)
-                .negativeText(R.string.text_cancel)
-                .onPositive((dialog, which) ->
-                        AccessibilityServiceTool.enableAccessibilityService()
-                ).show();
+        boolean autoEnableAccessibility = false;
+
+        // 尝试自动设置无障碍权限，需要ADB授权 adb shell pm grant ${BuildConfig.APPLICATION_ID} android.permission.WRITE_SECURE_SETTINGS
+        try {
+            String enabledServices = Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            String services = enabledServices + ":" + BuildConfig.APPLICATION_ID + "/com.stardust.autojs.core.accessibility.AccessibilityService";
+            Settings.Secure.putString(getApplicationContext().getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, services);
+            Settings.Secure.putString(getApplicationContext().getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, "1");
+            autoEnableAccessibility = true;
+        } catch (Exception e) {
+            Log.d(LOG_TAG, "自动设置无障碍失败");
+        }
+        if (!autoEnableAccessibility || AccessibilityServiceTool.isAccessibilityServiceEnabled(this)) {
+            new NotAskAgainDialog.Builder(this, "MainActivity.accessibility")
+                    .title(R.string.text_need_to_enable_accessibility_service)
+                    .content(R.string.explain_accessibility_permission)
+                    .positiveText(R.string.text_go_to_setting)
+                    .negativeText(R.string.text_cancel)
+                    .onPositive((dialog, which) ->
+                            AccessibilityServiceTool.enableAccessibilityService()
+                    ).show();
+        }
     }
 
     private void setUpToolbar() {
@@ -225,9 +245,12 @@ public class MainActivity extends BaseActivity implements OnActivityResultDelega
     }
 
     @Override
+    @SuppressLint("CheckResult")
     protected void onResume() {
         super.onResume();
         mVersionGuard.checkForDeprecatesAndUpdates();
+        // 确保校验工作正常运行
+        TimedTaskScheduler.ensureCheckTaskWorks(getApplicationContext());
     }
 
     @Override

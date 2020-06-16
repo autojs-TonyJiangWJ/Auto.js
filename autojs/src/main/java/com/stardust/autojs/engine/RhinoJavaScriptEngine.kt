@@ -12,7 +12,10 @@ import com.stardust.autojs.runtime.ScriptRuntime
 import com.stardust.autojs.script.JavaScriptSource
 import com.stardust.automator.UiObjectCollection
 import com.stardust.pio.UncheckedIOException
-import org.mozilla.javascript.*
+import org.mozilla.javascript.Context
+import org.mozilla.javascript.Script
+import org.mozilla.javascript.Scriptable
+import org.mozilla.javascript.ScriptableObject
 import org.mozilla.javascript.commonjs.module.RequireBuilder
 import org.mozilla.javascript.commonjs.module.provider.SoftCachingModuleScriptProvider
 import java.io.File
@@ -99,10 +102,19 @@ open class RhinoJavaScriptEngine(private val mAndroidContext: android.content.Co
 
     @Synchronized
     override fun destroy() {
-        super.destroy()
-        Log.d(LOG_TAG, "on destroy")
-        sContextEngineMap.remove(context)
-        Context.exit()
+        var destroySuccess = false;
+        try {
+            super.destroy()
+            Log.d(LOG_TAG, "on destroy")
+            sContextEngineMap.remove(context)
+            destroySuccess = true;
+        } finally {
+            if (destroySuccess)
+                Log.d(LOG_TAG, "destroy execute success")
+            else
+                Log.d(LOG_TAG, "destroy execute failed")
+            Context.exit()
+        }
     }
 
     override fun init() {
@@ -144,11 +156,24 @@ open class RhinoJavaScriptEngine(private val mAndroidContext: android.content.Co
         return context
     }
 
+    fun exitContext(context: Context) {
+        sContextEngineMap.remove(context)
+        try {
+            Context.exit()
+        } catch (e: Exception) {
+            // do nothing
+        }
+    }
+
     protected fun setupContext(context: Context) {
         context.optimizationLevel = -1
         context.languageVersion = Context.VERSION_ES6
         context.locale = Locale.getDefault()
         context.wrapFactory = WrapFactory()
+    }
+
+    protected fun removeContext(context: Context) {
+        context.wrapFactory = null
     }
 
     private inner class WrapFactory : org.mozilla.javascript.WrapFactory() {

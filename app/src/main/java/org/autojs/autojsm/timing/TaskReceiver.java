@@ -4,7 +4,9 @@ package org.autojs.autojsm.timing;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
+import org.autojs.autojsm.autojs.AutoJs;
 import org.autojs.autojsm.external.ScriptIntents;
 
 /**
@@ -13,11 +15,17 @@ import org.autojs.autojsm.external.ScriptIntents;
 
 public class TaskReceiver extends BroadcastReceiver {
 
-    public static final String ACTION_TASK = "com.stardust.autojs.action.task";
+    public static final String ACTION_TASK = "org.autojs.autojsm.action.task";
     public static final String EXTRA_TASK_ID = "task_id";
+    private static final String LOG_TAG = "TaskReceiver";
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        Log.d(LOG_TAG, "receive intent:" + intent.getAction());
+        Log.d(LOG_TAG, "taskInfo [id=" + intent.getLongExtra(TaskReceiver.EXTRA_TASK_ID, -1)
+                + ", path=" + intent.getStringExtra(ScriptIntents.EXTRA_KEY_PATH)
+                + "]");
+        AutoJs.getInstance().debugInfo("receive intent:" + intent.getAction());
         ScriptIntents.handleIntent(context, intent);
         long id = intent.getLongExtra(EXTRA_TASK_ID, -1);
         if (id >= 0) {
